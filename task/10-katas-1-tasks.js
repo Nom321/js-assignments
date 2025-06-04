@@ -9,7 +9,7 @@
  *
  * Example of return :
  *  [
- *     { abbreviation : 'N',     azimuth : 0.00 ,
+ *     { abbreviation : 'N',     azimuth : 0.00 },
  *     { abbreviation : 'NbE',   azimuth : 11.25 },
  *     { abbreviation : 'NNE',   azimuth : 22.50 },
  *       ...
@@ -17,10 +17,33 @@
  *  ]
  */
 function createCompassPoints() {
-    throw new Error('Not implemented');
-    var sides = ['N','E','S','W'];  // use array of cardinal directions only!
-}
+    const sides = ['N', 'E', 'S', 'W'];
+    const points = [];
+    const steps = [0, 11.25, 22.5, 33.75];
+    const names = [
+        ['', 'b', '', 'b'],
+        ['N', 'N', 'NE', 'E'],
+        ['E', 'N', 'E', 'E'],
+        ['S', 'S', 'SE', 'E'],
+        ['W', 'S', 'W', 'W']
+    ];
 
+    for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+            const idx = i * 4 + j;
+            points[idx] = {
+                abbreviation: names[0][j] + names[i + 1][j],
+                azimuth: idx * 11.25
+            };
+        }
+    }
+
+    points[4].abbreviation = 'E';
+    points[12].abbreviation = 'S';
+    points[20].abbreviation = 'W';
+
+    return points;
+}
 
 /**
  * Expand the braces of the specified string.
@@ -56,9 +79,61 @@ function createCompassPoints() {
  *   'nothing to do' => 'nothing to do'
  */
 function* expandBraces(str) {
-    throw new Error('Not implemented');
-}
+    function parse(str, pos) {
+        let result = [''];
+        while (pos < str.length) {
+            if (str[pos] === '{') {
+                const [options, newPos] = parseOptions(str, pos + 1);
+                result = result.flatMap(prefix => options.map(opt => prefix + opt));
+                pos = newPos;
+            } else if (str[pos] === '\\') {
+                pos++;
+                result = result.map(prefix => prefix + (str[pos] || ''));
+                pos++;
+            } else {
+                result = result.map(prefix => prefix + str[pos]);
+                pos++;
+            }
+        }
+        return result;
+    }
 
+    function parseOptions(str, pos) {
+        let options = [''];
+        let current = '';
+        let braceLevel = 0;
+
+        while (pos < str.length) {
+            if (str[pos] === '{') {
+                braceLevel++;
+                current += str[pos];
+            } else if (str[pos] === '}') {
+                if (braceLevel > 0) {
+                    braceLevel--;
+                    current += str[pos];
+                } else {
+                    options = options.map(prefix => prefix + current);
+                    return [options, pos + 1];
+                }
+            } else if (str[pos] === ',' && braceLevel === 0) {
+                options = options.map(prefix => prefix + current);
+                current = '';
+            } else if (str[pos] === '\\') {
+                pos++;
+                current += str[pos] || '';
+            } else {
+                current += str[pos];
+            }
+            pos++;
+        }
+        options = options.map(prefix => prefix + current);
+        return [options, pos];
+    }
+
+    for (const expanded of parse(str, 0)) {
+        yield expanded;
+    }
+}
 
 /**
  * Returns the ZigZag matrix
@@ -88,12 +163,43 @@ function* expandBraces(str) {
  *
  */
 function getZigZagMatrix(n) {
-    throw new Error('Not implemented');
+    const matrix = Array.from({ length: n }, () => Array(n).fill(0));
+    let value = 0;
+    let i = 0, j = 0;
+    let up = true;
+
+    while (value < n * n) {
+        matrix[i][j] = value++;
+        if (up) {
+            if (j === n - 1) {
+                i++;
+                up = false;
+            } else if (i === 0) {
+                j++;
+                up = false;
+            } else {
+                i--;
+                j++;
+            }
+        } else {
+            if (i === n - 1) {
+                j++;
+                up = true;
+            } else if (j === 0) {
+                i++;
+                up = true;
+            } else {
+                i++;
+                j--;
+            }
+        }
+    }
+
+    return matrix;
 }
 
-
 /**
- * Returns true if specified subset of dominoes can be placed in a row accroding to the game rules.
+ * Returns true if specified subset of dominoes can be placed in a row according to the game rules.
  * Dominoes details see at: https://en.wikipedia.org/wiki/Dominoes
  *
  * Each domino tile presented as an array [x,y] of tile value.
@@ -113,9 +219,27 @@ function getZigZagMatrix(n) {
  *
  */
 function canDominoesMakeRow(dominoes) {
-    throw new Error('Not implemented');
-}
+    if (!dominoes.length) return true;
 
+    function tryChain(used, current, target) {
+        if (used.length === dominoes.length) return true;
+        for (let i = 0; i < dominoes.length; i++) {
+            if (!used.includes(i)) {
+                const [a, b] = dominoes[i];
+                if (current === a && tryChain([...used, i], b, target)) return true;
+                if (current === b && tryChain([...used, i], a, target)) return true;
+            }
+        }
+        return false;
+    }
+
+    for (let i = 0; i < dominoes.length; i++) {
+        const [a, b] = dominoes[i];
+        if (tryChain([i], b, a) || tryChain([i], a, b)) return true;
+    }
+
+    return false;
+}
 
 /**
  * Returns the string expression of the specified ordered list of integers.
@@ -137,13 +261,37 @@ function canDominoesMakeRow(dominoes) {
  * [ 1, 2, 4, 5]          => '1,2,4,5'
  */
 function extractRanges(nums) {
-    throw new Error('Not implemented');
+    if (!nums.length) return '';
+
+    const result = [];
+    let start = nums[0];
+    let prev = nums[0];
+
+    for (let i = 1; i <= nums.length; i++) {
+        if (i === nums.length || nums[i] !== prev + 1) {
+            if (start === prev) {
+                result.push(`${start}`);
+            } else if (prev - start === 1) {
+                result.push(`${start},${prev}`);
+            } else {
+                result.push(`${start}-${prev}`);
+            }
+            if (i < nums.length) {
+                start = nums[i];
+                prev = nums[i];
+            }
+        } else {
+            prev = nums[i];
+        }
+    }
+
+    return result.join(',');
 }
 
 module.exports = {
-    createCompassPoints : createCompassPoints,
-    expandBraces : expandBraces,
-    getZigZagMatrix : getZigZagMatrix,
-    canDominoesMakeRow : canDominoesMakeRow,
-    extractRanges : extractRanges
+    createCompassPoints,
+    expandBraces,
+    getZigZagMatrix,
+    canDominoesMakeRow,
+    extractRanges
 };

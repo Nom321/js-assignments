@@ -28,9 +28,31 @@
  *   'NULL'      => false 
  */
 function findStringInSnakingPuzzle(puzzle, searchStr) {
-    throw new Error('Not implemented');
-}
+    const rows = puzzle.length;
+    const cols = puzzle[0].length;
+    const visited = Array(rows).fill().map(() => Array(cols).fill(false));
 
+    function dfs(row, col, index) {
+        if (index === searchStr.length) return true;
+        if (row < 0 || row >= rows || col < 0 || col >= cols || visited[row][col]) return false;
+        if (puzzle[row][col] !== searchStr[index]) return false;
+
+        visited[row][col] = true;
+        const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // right, down, left, up
+        for (const [dr, dc] of directions) {
+            if (dfs(row + dr, col + dc, index + 1)) return true;
+        }
+        visited[row][col] = false;
+        return false;
+    }
+
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+            if (dfs(i, j, 0)) return true;
+        }
+    }
+    return false;
+}
 
 /**
  * Returns all permutations of the specified string.
@@ -45,9 +67,16 @@ function findStringInSnakingPuzzle(puzzle, searchStr) {
  *    'abc' => 'abc','acb','bac','bca','cab','cba'
  */
 function* getPermutations(chars) {
-    throw new Error('Not implemented');
+    function permute(str, prefix = '') {
+        if (str.length === 0) yield prefix;
+        for (let i = 0; i < str.length; i++) {
+            const curr = str[i];
+            const remaining = str.slice(0, i) + str.slice(i + 1);
+            yield * permute(remaining, prefix + curr);
+        }
+    }
+    yield* permute(chars);
 }
-
 
 /**
  * Returns the most profit from stock quotes.
@@ -65,9 +94,26 @@ function* getPermutations(chars) {
  *    [ 1, 6, 5, 10, 8, 7 ] => 18  (buy at 1,6,5 and sell all at 10)
  */
 function getMostProfitFromStockQuotes(quotes) {
-    throw new Error('Not implemented');
-}
+    let profit = 0;
+    let buySum = 0;
+    let buyCount = 0;
+    let maxPrice = 0;
 
+    for (let i = quotes.length - 1; i >= 0; i--) {
+        if (quotes[i] > maxPrice) {
+            profit += buyCount * (quotes[i] - maxPrice);
+            maxPrice = quotes[i];
+            buySum = 0;
+            buyCount = 0;
+        } else {
+            buySum += quotes[i];
+            buyCount++;
+            profit += maxPrice - quotes[i];
+        }
+    }
+
+    return profit;
+}
 
 /**
  * Class representing the url shorting helper.
@@ -84,22 +130,41 @@ function getMostProfitFromStockQuotes(quotes) {
  * 
  */
 function UrlShortener() {
-    this.urlAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"+
-                           "abcdefghijklmnopqrstuvwxyz"+
-                           "0123456789-_.~!*'();:@&=+$,/?#[]";
+    this.urlAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+        "abcdefghijklmnopqrstuvwxyz" +
+        "0123456789-_.~!*'();:@&=+$,/?#[]";
+    this.base = this.urlAllowedChars.length;
 }
 
 UrlShortener.prototype = {
+    encode: function (url) {
+        let num = 0n;
+        for (let i = 0; i < url.length; i++) {
+            num = num * BigInt(this.base) + BigInt(this.urlAllowedChars.indexOf(url[i]));
+        }
 
-    encode: function(url) {
-        throw new Error('Not implemented');
+        let short = '';
+        while (num > 0) {
+            short = this.urlAllowedChars[Number(num % BigInt(this.base))] + short;
+            num = num / BigInt(this.base);
+        }
+        return short || this.urlAllowedChars[0];
     },
-    
-    decode: function(code) {
-        throw new Error('Not implemented');
-    } 
-}
 
+    decode: function (code) {
+        let num = 0n;
+        for (let i = 0; i < code.length; i++) {
+            num = num * BigInt(this.base) + BigInt(this.urlAllowedChars.indexOf(code[i]));
+        }
+
+        let url = '';
+        while (num > 0) {
+            url = this.urlAllowedChars[Number(num % BigInt(this.base))] + url;
+            num = num / BigInt(this.base);
+        }
+        return url;
+    }
+};
 
 module.exports = {
     findStringInSnakingPuzzle: findStringInSnakingPuzzle,

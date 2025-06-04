@@ -8,7 +8,6 @@
  *                                                                                                *
  **************************************************************************************************/
 
-
 /**
  * Returns the rectagle object with width and height parameters and getArea() method
  *
@@ -23,9 +22,12 @@
  *    console.log(r.getArea());   // => 200
  */
 function Rectangle(width, height) {
-    throw new Error('Not implemented');
+    this.width = width;
+    this.height = height;
+    this.getArea = function () {
+        return this.width * this.height;
+    };
 }
-
 
 /**
  * Returns the JSON representation of specified object
@@ -38,9 +40,8 @@ function Rectangle(width, height) {
  *    { width: 10, height : 20 } => '{"height":10,"width":20}'
  */
 function getJSON(obj) {
-    throw new Error('Not implemented');
+    return JSON.stringify(obj);
 }
-
 
 /**
  * Returns the object of specified type from JSON representation
@@ -54,9 +55,10 @@ function getJSON(obj) {
  *
  */
 function fromJSON(proto, json) {
-    throw new Error('Not implemented');
+    const obj = Object.create(proto);
+    Object.assign(obj, JSON.parse(json));
+    return obj;
 }
-
 
 /**
  * Css selectors builder
@@ -105,42 +107,107 @@ function fromJSON(proto, json) {
  *
  *  For more examples see unit tests.
  */
+class CssSelector {
+    constructor() {
+        this.parts = {
+            element: null,
+            id: null,
+            classes: [],
+            attrs: [],
+            pseudoClasses: [],
+            pseudoElement: null
+        };
+        this.order = ['element', 'id', 'classes', 'attrs', 'pseudoClasses', 'pseudoElement'];
+    }
+
+    element(value) {
+        if (this.parts.element) throw new Error('Element, id and pseudo-element should be selected only once');
+        this.parts.element = value;
+        return this;
+    }
+
+    id(value) {
+        if (this.parts.id) throw new Error('Element, id and pseudo-element should be selected only once');
+        this.parts.id = `#${value}`;
+        return this;
+    }
+
+    class(value) {
+        this.parts.classes.push(`.${value}`);
+        return this;
+    }
+
+    attr(value) {
+        this.parts.attrs.push(`[${value}]`);
+        return this;
+    }
+
+    pseudoClass(value) {
+        this.parts.pseudoClasses.push(`:${value}`);
+        return this;
+    }
+
+    pseudoElement(value) {
+        if (this.parts.pseudoElement) throw new Error('Element, id and pseudo-element should be selected only once');
+        this.parts.pseudoElement = `::${value}`;
+        return this;
+    }
+
+    stringify() {
+        return this.order.reduce((str, key) => {
+            if (key === 'classes' || key === 'attrs' || key === 'pseudoClasses') {
+                return str + (this.parts[key] ? this.parts[key].join('') : '');
+            }
+            return str + (this.parts[key] || '');
+        }, '');
+    }
+}
+
+class CombinedCssSelector {
+    constructor(selector1, combinator, selector2) {
+        this.selector1 = selector1;
+        this.combinator = combinator;
+        this.selector2 = selector2;
+    }
+
+    stringify() {
+        return `${this.selector1.stringify()} ${this.combinator} ${this.selector2.stringify()}`;
+    }
+}
 
 const cssSelectorBuilder = {
-
-    element: function(value) {
-        throw new Error('Not implemented');
+    element(value) {
+        return new CssSelector().element(value);
     },
 
-    id: function(value) {
-        throw new Error('Not implemented');
+    id(value) {
+        return new CssSelector().id(value);
     },
 
-    class: function(value) {
-        throw new Error('Not implemented');
+    class(value) {
+        return new CssSelector().class(value);
     },
 
-    attr: function(value) {
-        throw new Error('Not implemented');
+    attr(value) {
+        return new CssSelector().attr(value);
     },
 
-    pseudoClass: function(value) {
-        throw new Error('Not implemented');
+    pseudoClass(value) {
+        return new CssSelector().pseudoClass(value);
     },
 
-    pseudoElement: function(value) {
-        throw new Error('Not implemented');
+    pseudoElement(value) {
+        return new CssSelector().pseudoElement(value);
     },
 
-    combine: function(selector1, combinator, selector2) {
-        throw new Error('Not implemented');
+    combine(selector1, combinator, selector2) {
+        return new CombinedCssSelector(selector1, combinator, selector2);
     },
 };
 
-
 module.exports = {
-    Rectangle: Rectangle,
-    getJSON: getJSON,
-    fromJSON: fromJSON,
-    cssSelectorBuilder: cssSelectorBuilder
+    Rectangle,
+    getJSON,
+    fromJSON,
+    cssSelectorBuilder
 };
